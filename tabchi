@@ -1,0 +1,194 @@
+#!/bin/bash
+func_help() {
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${CYAN}>>> Cmd Helps :                                              <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi help : See this help                           <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi stats :  See server stats                                             <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi install : Install libs                          <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi run : Start a bot by id                             <<<${NC}"
+echo -e "${CYAN}                                                                    ${NC}"
+echo -e "${RED}>>> ./tabchi auto : Auto start all bots                             <<<${NC}"
+echo -e "${CYAN}                                                                    ${NC}"
+echo -e "${RED}>>> ./tabchi stop : Stop a bot by id                                 <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi stopall : Stop all bots                                   <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi resetapi : Clean a bot's api_id & api_hash           <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi resetsudo : Clean a bot's sudo                      <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi resetphone : Clean a bot's phone                         <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi reset : Clean a bot's api_id & api_hash, sudo, phone <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+echo -e "${RED}>>> ./tabchi clean : Completly clean a bot                                 <<<${NC}"
+echo -e "${CYAN}                                                                      ${NC}"
+}
+if [ "$1" = "help" ]; then
+func_help
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "install" ]; then
+sudo apt-get -y install python2.7 python-pip python-dev python-setuptools redis-server gcc g++ make tor
+echo "ControlPort 9051" > /etc/tor/torrc
+echo "HashedControlPassword 16:A85091D88E4119DC6081D3FBE7F04E8E75D9E00BDC0E7C7D5660101ACA" >> /etc/tor/torrc
+service tor restart
+redis-cli config set stop-writes-on-bgsave-error no
+service redis-server restart
+sudo pip install setuptools requests redis Pillow pycrypto stem
+sudo pip install -U requests[socks]
+chmod +x libtdjson.so
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+MG="\033[0;35m"
+echo -e "${CYAN}>>> Setup Completed . <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "stats" ]; then
+memTotal_b=`free -b |grep Mem |awk '{print $2}'`
+memFree_b=`free -b |grep Mem |awk '{print $4}'`
+memBuffer_b=`free -b |grep Mem |awk '{print $6}'`
+memCache_b=`free -b |grep Mem |awk '{print $7}'`
+memTotal_m=`free -m |grep Mem |awk '{print $2}'`
+memFree_m=`free -m |grep Mem |awk '{print $4}'`
+memBuffer_m=`free -m |grep Mem |awk '{print $6}'`
+memCache_m=`free -m |grep Mem |awk '{print $7}'`
+CPUPer=`top -b -n1 | grep "Cpu(s)" | awk '{print $2 + $4}'`
+hdd=`df -lh | awk '{if ($6 == "/") { print $5 }}' | head -1 | cut -d'%' -f1`
+ProcessCnt=`ps -A | wc -l`
+memUsed_b=$(($memTotal_b-$memFree_b))
+memUsed_m=$(($memTotal_m-$memFree_m))
+memUsedPrc=$((($memUsed_b*100)/$memTotal_b))
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> • Total ram : "$memTotal_m" Mb <<<${NC}"
+echo -e ""
+echo -e "${CYAN}>>> • Used ram : "$memUsed_m" Mb - "$memUsedPrc"% <<<${NC}"
+echo -e ""
+echo -e "${CYAN}>>> • Used cpu : "$CPUPer"% <<<${NC}"
+echo -e ""
+echo -e "${CYAN}>>> • Used hard : "$hdd"% <<<${NC}"
+echo -e ""
+echo -e "${CYAN}>>> • Process : "$ProcessCnt" <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "run" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for start : <<<${NC}"
+read Id
+sudo tmux new-session -d -s Launch${Id} "./tabchi "${Id}
+echo -e "${CYAN}>>> Bot number ${RED}"${Id}"${CYAN} Started in background <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "stop" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>>  Enter bot id for stop : <<<${NC}"
+read Id
+sudo tmux kill-session -t Launch${Id}
+echo -e "${CYAN}>>> Bot number ${RED}"${Id}"${CYAN} Stopped <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "stopall" ]; then
+killall tmux
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> All bots ${RED}"Stopped"${CYAN}<<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "auto" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+./tabchi stopall
+sleep 3
+for entr in "./Profiles"/*
+do
+Id="${entr/.\/Profiles\/tabchi_/}"
+sudo tmux new-session -d -s Launch${Id} "./tabchi "${Id}
+echo -e "${CYAN}>>> Bot number ${RED}"${Id}"${CYAN} Started in background <<<${NC}"
+done
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "resetapi" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for reset api : <<<${NC}"
+read Id
+redis-cli -n 13 del tabchi_${Id}api_id
+redis-cli -n 13 del tabchi_${Id}api_hash
+echo -e "${CYAN}>>> api_id & api_hash of bot ${RED}"${Id}"${CYAN} deleted plz restart bot to change it <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "resetsudo" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for reset sudo : <<<${NC}"
+read Id
+redis-cli -n 13 del tabchi_${Id}sudo
+echo -e "${CYAN}>>> Sudo of bot ${RED}"${Id}"${CYAN} deleted plz restart bot to change it <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "resetphone" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for reset phone : <<<${NC}"
+read Id
+rm -rf ./Profiles/tabchi_${Id}
+echo -e "${CYAN}>>> Phone of bot ${RED}"${Id}"${CYAN} deleted plz restart bot to change it <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "reset" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for reset completly: <<<${NC}"
+read Id
+redis-cli -n 13 del tabchi_${Id}api_id
+redis-cli -n 13 del tabchi_${Id}api_hash
+redis-cli -n 13 del tabchi_${Id}sudo
+rm -rf ./Profiles/tabchi_${Id}
+echo -e "${CYAN}>>> Bot number ${RED}"${Id}"${CYAN} completly rested <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ "$1" = "clean" ]; then
+RED="\033[0;31m"
+NC="\033[0m"
+CYAN="\033[0;36m"
+echo -e "${CYAN}>>> Enter bot id for clean : <<<${NC}"
+read Id
+redis-cli -n 13 keys tabchi_${Id}* | xargs redis-cli -n 13 del
+rm -rf ./Profiles/tabchi_${Id}
+echo -e "${CYAN}>>> Bot number ${RED}"${Id}"${CYAN} completly cleaned <<<${NC}"
+exit 1
+#------------------------------------------------------#
+elif [ -z "$1" ]; then
+func_help
+exit 1
+#------------------------------------------------------#
+else
+while true ; do
+	python tabchi.py $1
+	sleep 3
+done
+exit 1
+#------------------------------------------------------#
+fi
